@@ -3,6 +3,20 @@ from sqlalchemy.orm import relationship
 
 from Database import BASE, SESSION
 
+class GameSession(BASE):
+    __tablename__ = 'game_sessions'
+
+    id = Column(Integer, primary_key=True)
+    chat_id = Column(Integer, ForeignKey('chats.id'))
+
+    players = relationship("Player", back_populates="game_session")
+
+    def __init__(self, chat_id):
+        self.chat_id = chat_id
+
+    def __repr__(self):
+        return f"<GameSession(id={self.id}, chat_id={self.chat_id})>"
+    
 class Player(BASE):
     __tablename__ = 'players'
     user_id = Column(Integer, primary_key=True)
