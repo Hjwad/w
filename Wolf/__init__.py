@@ -4,6 +4,7 @@ import sys
 import time
 import os
 
+from pyrogram import Client
 from telegram.ext import Application
 from telegram.constants import ParseMode
 from config import *
@@ -36,6 +37,8 @@ if sys.version_info < (3, 6):
 ENV = bool(os.environ.get("ENV", False))
 
 if ENV:
+    API_ID = int(os.environ.get("API_ID", None))
+    API_HASH = os.environ.get("API_HASH", None)
     ALLOW_EXCL = os.environ.get("ALLOW_EXCL", False)
     DB_URI = os.environ.get("DATABASE_URL")
     EVENT_LOGS = os.environ.get("EVENT_LOGS", None)
@@ -86,6 +89,8 @@ ASCETIC.add(MASTER)
 # Application
 dispatcher = Application.builder().token(TOKEN).build()
 function = dispatcher.add_handler
+
+app = Client("Wolf", api_id=API_ID, api_hash=API_HASH, bot_token=TOKEN)
 
 # Alive Message
 START_IMG = "https://telegra.ph/file/506b055da5642e1517acc.jpg"

@@ -1,78 +1,58 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+import threading
+from sqlalchemy import Column, Integer, BigInteger, ForeignKey, String
 from sqlalchemy.orm import relationship
-
 from Database import BASE, SESSION
 
-class GameSession(BASE):
-    __tablename__ = 'game_sessions'
+INSERTION_LOCK = threading.RLock()
 
-    id = Column(Integer, primary_key=True)
-    chat_id = Column(Integer, ForeignKey('chats.id'))
+class Player(BASE):
+    __tablename__ = "players"
+    user_id = Column(BigInteger, primary_key=True)
+    chat_id = Column(String(14), ForeignKey("game_sessions.chat_id"), primary_key=True)
+    user = relationship("User", back_populates="players")
+    game_session = relationship("GameSession", back_populates="players")
 
-    players = relationship("Player", back_populates="game_session")
-
-    def __init__(self, chat_id):
+    def __init__(self, user_id, chat_id):
+        self.user_id = user_id
         self.chat_id = chat_id
 
     def __repr__(self):
-        return f"<GameSession(id={self.id}, chat_id={self.chat_id})>"
-    
-class Player(BASE):
-    __tablename__ = 'players'
-    user_id = Column(Integer, primary_key=True)
-    # Relationship to GameSession table
-    session_user_id = Column(Integer, ForeignKey('game_sessions.user_id'))
-    session = relationship('GameSession', back_populates='players')
+        return f"<Player user_id={self.user_id} chat_id={self.chat_id}>"
 
-    def __init__(self, user_id):
-        self.user_id = user_id
+def create_player(user_id, chat_id):
+    with INSERTION_LOCK:
+        session = SESSION()
+        try:
+            new_player = Player(user_id=user_id, chat_id=chat_id)
+            session.add(new_player)
+            session.commit()
+            return new_player
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
 
-    def __repr__(self):
-        return f"<Player(user_id={self.user_id})>"
+def get_player(user_id, chat_id):
+    with INSERTION_LOCK:
+        session = SESSION()
+        try:
+            return session.query(Player).filter_by(user_id=user_id, chat_id=chat_id).first()
+        finally:
+            session.close()
 
-    def to_dict(self):
-        return {"user_id": self.user_id}
+def del_player(user_id, chat_id):
+    with INSERTION_LOCK:
+        session = SESSION()
+        try:
+            player = session.query(Player).filter_by(user_id=user_id, chat_id=chat_id).first()
+            if player:
+                session.delete(player)
+                session.commit()
+                return True
+            else:
+                return False
+        finally:
+            session.close()
 
-
-def add_player(username):
-    # Create a new player object
-    new_player = Player(username)
-
-    # Create a session
-    session = SESSION()
-
-    try:
-        # Add the player to the session
-        session.add(new_player)
-
-        # Commit the session to save the changes to the database
-        session.commit()
-        print("Player created successfully!")
-    except Exception as e:
-        # Rollback the session if an error occurs
-        session.rollback()
-        print("Failed to create player:", e)
-    finally:
-        # Close the session
-        session.close()
-
-def get_player(user_id):
-    try:
-        return SESSION.query(Player).filter_by(user_id=user_id).first()
-    finally:
-        SESSION.close()
-
-
-def delete_player(player_user_id):
-    try:
-        player = SESSION.query(Player).filter_by(user_id=player_user_id).first()
-        if player:
-            SESSION.delete(player)
-            SESSION.commit()
-            print("Player deleted successfully!")
-        else:
-            print("Player not found!")
-    except Exception as e:
-        print("Failed to delete player:", e)
-    finally:
-        SESSION.close()
+BASE.metadata.create_all(SESSION.bind)

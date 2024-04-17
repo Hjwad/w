@@ -31,6 +31,7 @@ from telegram.ext import (
 
 from Wolf import (
     MASTER,
+    LOGGER,
     ASCETIC,
     SUPPORT_CHAT,
     SUPPORT_ID,
@@ -40,6 +41,7 @@ from Wolf import (
     dispatcher,
     function,
     loop,
+    app,
 )
 
 
@@ -103,4 +105,11 @@ def main():
     dispatcher.run_polling()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+        app.start()
+    except KeyboardInterrupt:
+        pass
+    except Exception:
+        err = traceback.format_exc()
+        LOGGER.info(err)
